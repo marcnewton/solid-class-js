@@ -2,11 +2,13 @@ import { METADATA_KEYS, CastType, ClassFactory, EnrichCallback, ValidationRule }
 import { ValidationError, ValidationErrorsList } from './errors';
 
 export class BaseModel {
+    private __baseline?: string;
+
     /**
      * Assigns raw data properties to this instance, strictly respecting defined class properties,
      * data types, relationships, and enrichment callbacks.
      */
-    public assign(data: Partial<this> | any): this {
+    public assign(data: Partial<this> | any, __validateRules: boolean = true): this {
         if (!data || typeof data !== 'object') {
             return this;
         }
@@ -147,9 +149,37 @@ export class BaseModel {
             }
         }
 
-        this.validate();
+        if (__validateRules) {
+            this.validate();
+        }
 
         return this;
+    }
+
+    /**
+     * Snapshots the instance state entirely, establishing a baseline to revert back to if `reset()` is invoked.
+     * Useful for capturing clean state after API GETs or successful Database POSTs.
+     */
+    public commit(): void {
+        this.__baseline = JSON.stringify(this.__serialize(undefined, true));
+    }
+
+    /**
+     * Rolls the internal instance data fully backward to the last explicitly `commit()`ted baseline.
+     * If `commit()` was never called, it zeros out properties to their baseline initial definitions natively.
+     */
+    public reset(): void {
+        const properties = this.getAllProperties();
+
+        // Zero-out existing state to drop patch data before hydrating rollback
+        for (const propertyKey of properties) {
+            (this as any)[propertyKey] = undefined;
+        }
+
+        if (this.__baseline) {
+            // Re-assign explicitly without throwing nested validation constraint errors
+            this.assign(JSON.parse(this.__baseline), false);
+        }
     }
 
     /**
@@ -157,21 +187,30 @@ export class BaseModel {
      * Evaluates @Exclude targets stripping them safely conditionally based on executing `context`.
      */
     public toJSON(context?: string): Record<string, any> {
+        return this.__serialize(context, false);
+    }
+
+    /**
+     * Internal extraction of serialization avoiding global exposes natively capturing `@Exclude` when required.
+     */
+    private __serialize(context?: string, ignoreExclusions: boolean = false): Record<string, any> {
         const payload: Record<string, any> = {};
         const properties = this.getAllProperties();
 
         for (const propertyKey of properties) {
-            const excludeContexts: string[] | undefined = Reflect.getMetadata(METADATA_KEYS.EXCLUDE, this, propertyKey);
+            if (!ignoreExclusions) {
+                const excludeContexts: string[] | undefined = Reflect.getMetadata(METADATA_KEYS.EXCLUDE, this, propertyKey);
 
-            if (excludeContexts) {
-                // If the decorator is called bare @Exclude() it drops everywhere seamlessly
-                if (excludeContexts.length === 0) {
-                    continue;
-                }
+                if (excludeContexts) {
+                    // If the decorator is called bare @Exclude() it drops everywhere seamlessly
+                    if (excludeContexts.length === 0) {
+                        continue;
+                    }
 
-                // If contexts are provided, evaluate if this environment matches
-                if (context && excludeContexts.includes(context)) {
-                    continue;
+                    // If contexts are provided, evaluate if this environment matches
+                    if (context && excludeContexts.includes(context)) {
+                        continue;
+                    }
                 }
             }
 
@@ -179,9 +218,9 @@ export class BaseModel {
 
             // If nested structure exists cascade context rules gracefully
             if (value instanceof BaseModel) {
-                value = value.toJSON(context);
+                value = (value as any).__serialize(context, ignoreExclusions);
             } else if (Array.isArray(value)) {
-                value = value.map(item => item instanceof BaseModel ? item.toJSON(context) : item);
+                value = value.map(item => item instanceof BaseModel ? (item as any).__serialize(context, ignoreExclusions) : item);
             }
 
             payload[propertyKey] = value;
