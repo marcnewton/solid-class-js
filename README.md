@@ -166,3 +166,9 @@ npm run test
 
 ## License
 MIT
+
+## Publish
+
+```bash
+npm publish --access public
+```

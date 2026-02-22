@@ -1,5 +1,5 @@
 {
-  "name": "@marcnewton/solid-class",
+  "name": "@marc-newton/solid-class",
   "version": "1.0.0",
   "description": "> A robust TypeScript/JavaScript library for building SOLID, strictly-typed data models. Safely ingest, sanitize, and cast raw API responses into structured class instances.",
   "main": "dist/index.js",
