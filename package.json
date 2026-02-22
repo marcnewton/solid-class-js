@@ -1,0 +1,57 @@
+{
+  "name": "solid-class",
+  "version": "1.0.0",
+  "description": "> A robust TypeScript/JavaScript library for building SOLID, strictly-typed data models. Safely ingest, sanitize, and cast raw API responses into structured class instances.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "jest",
+    "lint": "eslint 'src/**/*.ts'",
+    "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
+    "prepublishOnly": "npm run build && npm run test && npm run lint"
+  },
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/marcnewton/solid-class-js.git"
+  },
+  "keywords": [
+    "solid",
+    "class",
+    "typescript",
+    "decorators",
+    "models",
+    "casting",
+    "api",
+    "validation"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/marcnewton/solid-class-js/issues"
+  },
+  "homepage": "https://github.com/marcnewton/solid-class-js#readme",
+  "dependencies": {
+    "reflect-metadata": "^0.2.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.3.0",
+    "@typescript-eslint/eslint-plugin": "^8.56.0",
+    "@typescript-eslint/parser": "^8.56.0",
+    "eslint": "^10.0.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "globals": "^17.3.0",
+    "jest": "^30.2.0",
+    "prettier": "^3.8.1",
+    "ts-jest": "^29.4.6",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.0"
+  }
+}

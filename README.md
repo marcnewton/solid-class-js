@@ -133,5 +133,15 @@ The core class your models must extend.
 
 ---
 
+## Testing
+
+To run the test suite, ensure you have installed the dev dependencies and run:
+
+```bash
+npm run test
+```
+
+---
+
 ## License
 MIT
