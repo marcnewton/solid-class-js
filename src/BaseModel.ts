@@ -12,18 +12,13 @@ export class BaseModel {
         }
 
         const properties = this.getAllProperties();
+        const enrichedProperties: string[] = [];
 
         for (const propertyKey of properties) {
-            // Handle @Enrich first as it computes value dynamically based on entire raw data payload
+            // Handle @Enrich by deferring it until after basic properties are assimilated
             const enrichCallback: EnrichCallback | undefined = Reflect.getMetadata(METADATA_KEYS.ENRICH, this, propertyKey);
             if (enrichCallback) {
-                try {
-                    // The enrich callback receives the raw unassimilated data payload
-                    (this as any)[propertyKey] = enrichCallback(data);
-                } catch {
-                    // If enrich fails, safely ignore or leave generic error
-                    (this as any)[propertyKey] = undefined;
-                }
+                enrichedProperties.push(propertyKey);
                 continue; // Enriched fields do not go through normal processing
             }
 
@@ -109,6 +104,47 @@ export class BaseModel {
 
             // If no decorator matched, we DO NOT assign the property because the spec states:
             // "Unmapped keys will be safely ignored to prevent prototype pollution or data leaks."
+        }
+
+        // Post-process @Enrich hooks providing access to the newly mutated instance state merged with raw payload
+        for (const propertyKey of enrichedProperties) {
+            const enrichCallback: EnrichCallback | undefined = Reflect.getMetadata(METADATA_KEYS.ENRICH, this, propertyKey);
+            if (enrichCallback) {
+                try {
+                    // Merged scope ensures patch payloads like `.assign({ age: 25 })` preserve existing `this.firstName` states
+                    const mergedScope = Object.assign({}, this, data);
+
+                    // Track if the enrichment callback actually accesses any properties supplied in this specific patch payload.
+                    // If it only accesses undefined/missing keys, the payload does not apply to this Enrichment rule natively!
+                    let accessedDataKey = false;
+                    const proxyScope = new Proxy(mergedScope, {
+                        get(target, prop) {
+                            if (prop in data) accessedDataKey = true;
+                            return target[prop as keyof typeof target];
+                        },
+                        has(target, prop) {
+                            if (prop in data) accessedDataKey = true;
+                            return prop in target;
+                        },
+                        ownKeys(target) {
+                            accessedDataKey = true;
+                            return Reflect.ownKeys(target);
+                        }
+                    });
+
+                    const result = enrichCallback(proxyScope);
+
+                    // If this was a partial update (Patch) and the callback didn't access any relevant incoming data, 
+                    // we skip assignment to preserve its current valid state (e.g. keeping `fullName` instead of overwriting with undefined)
+                    if (accessedDataKey || Object.keys(data).length === 0) {
+                        (this as any)[propertyKey] = result;
+                    }
+
+                } catch {
+                    // If enrich fails entirely, we log undefined instead of corrupting execution
+                    (this as any)[propertyKey] = undefined;
+                }
+            }
         }
 
         this.validate();

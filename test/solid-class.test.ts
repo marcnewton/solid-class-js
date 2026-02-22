@@ -23,6 +23,9 @@ class User extends BaseModel {
 
     @Enrich((data) => data.firstName + ' ' + data.lastName)
     fullName!: string;
+
+    @Cast('number')
+    age: number = 10;
 }
 
 describe('Solid Class JS', () => {
@@ -32,6 +35,7 @@ describe('Solid Class JS', () => {
             username: 'johndoe',
             firstName: 'John',
             lastName: 'Doe',
+            // age: 25,
             secretToken: 'xyz123',
             primaryAddress: { street: '456 Market St', city: 'London', secretToken: 'abc' },
             addresses: [
@@ -47,6 +51,7 @@ describe('Solid Class JS', () => {
         expect(user.username).toBe('johndoe');
         expect((user as any).secretToken).toBeUndefined();
         expect(user.fullName).toBe('John Doe');
+        expect(user.age).toBe(10);
 
         expect(user.primaryAddress).toBeInstanceOf(Address);
         expect(user.primaryAddress.street).toBe('456 Market St');
@@ -56,6 +61,16 @@ describe('Solid Class JS', () => {
         expect(user.addresses[0]).toBeInstanceOf(Address);
         expect(user.addresses[0].street).toBe('123 Main St');
         expect((user.addresses[0] as any).extraKey).toBeUndefined();
+
+
+        // Patch some data but ensure everything else stays the same
+        user.assign({ age: 25 });
+
+        expect(user.id).toBe(123);
+        expect(user.username).toBe('johndoe');
+        expect(user.fullName).toBe('John Doe');
+        expect(user.age).toBe(25);
+
     });
 
     it('should safely ignore corrupted payload formats and edge cases', () => {
