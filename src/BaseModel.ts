@@ -243,6 +243,25 @@ export class BaseModel {
                             }
                         }
                     }
+
+                    if (rule.type === 'custom') {
+                        const isValidOrError = rule.value(value, this);
+                        if (isValidOrError === false) {
+                            errors.push(new ValidationError(
+                                propertyKey,
+                                rule.type,
+                                undefined,
+                                `Property '${propertyKey}' failed custom validation.`
+                            ));
+                        } else if (typeof isValidOrError === 'string') {
+                            errors.push(new ValidationError(
+                                propertyKey,
+                                rule.type,
+                                undefined,
+                                isValidOrError
+                            ));
+                        }
+                    }
                 }
             }
         }

@@ -16,9 +16,10 @@ export type CastType = 'string' | 'number' | 'boolean';
 export type ClassConstructor<T = any> = new (...args: any[]) => T;
 export type ClassFactory = () => ClassConstructor;
 export type EnrichCallback = (data: any) => any;
+export type CustomValidatorCallback = (value: any, instance: any) => boolean | string;
 
 export interface ValidationRule {
-    type: 'required' | 'min-length' | 'max-length' | 'min' | 'max' | 'matches' | 'email' | 'url';
+    type: 'required' | 'min-length' | 'max-length' | 'min' | 'max' | 'matches' | 'email' | 'url' | 'custom';
     value?: any;
 }
 
@@ -160,6 +161,14 @@ export function MapFrom(alias: string): PropertyDecorator {
         if (typeof propertyKey === 'string') {
             registerProperty(target, propertyKey);
             Reflect.defineMetadata(METADATA_KEYS.MAP_FROM, alias, target, propertyKey);
+        }
+    };
+}
+
+export function CustomValidator(callback: CustomValidatorCallback): PropertyDecorator {
+    return function (target: any, propertyKey: string | symbol) {
+        if (typeof propertyKey === 'string') {
+            addValidationRule(target, propertyKey, { type: 'custom', value: callback });
         }
     };
 }

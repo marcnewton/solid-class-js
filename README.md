@@ -144,6 +144,7 @@ Use these to enforce strict value conditions on defined properties. If any condi
 * `@Matches(pattern: RegExp)` - Tests a parsed string against a regular expression.
 * `@IsEmail()` - A strict check assuring the string satisfies a standard format for an Email Address.
 * `@IsUrl()` - A strict check assuring the string resolves securely into a native URL instance.
+* `@CustomValidator((value, instance) => boolean | string)` - Escapes structural checking completely, passing the property `value` and parent model `instance` to evaluate explicitly scoped generic business rules.
 
 ---
 
