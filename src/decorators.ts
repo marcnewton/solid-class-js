@@ -1,11 +1,12 @@
 import 'reflect-metadata';
 
 export const METADATA_KEYS = {
-  CAST: Symbol('solid-class:cast'),
-  CAST_OBJECT: Symbol('solid-class:cast-object'),
-  CAST_ARRAY: Symbol('solid-class:cast-array'),
-  ENRICH: Symbol('solid-class:enrich'),
-  PROPERTIES: Symbol('solid-class:properties'),
+    CAST: Symbol('solid-class:cast'),
+    CAST_OBJECT: Symbol('solid-class:cast-object'),
+    CAST_ARRAY: Symbol('solid-class:cast-array'),
+    ENRICH: Symbol('solid-class:enrich'),
+    PROPERTIES: Symbol('solid-class:properties'),
+    VALIDATION: Symbol('solid-class:validation'),
 };
 
 export type CastType = 'string' | 'number' | 'boolean';
@@ -13,46 +14,98 @@ export type ClassConstructor<T = any> = new (...args: any[]) => T;
 export type ClassFactory = () => ClassConstructor;
 export type EnrichCallback = (data: any) => any;
 
+export interface ValidationRule {
+    type: 'required' | 'min-length' | 'max-length' | 'min' | 'max';
+    value?: any;
+}
+
 function registerProperty(target: any, propertyKey: string) {
-  const properties: string[] = Reflect.getOwnMetadata(METADATA_KEYS.PROPERTIES, target) || [];
-  if (!properties.includes(propertyKey)) {
-    properties.push(propertyKey);
-    Reflect.defineMetadata(METADATA_KEYS.PROPERTIES, properties, target);
-  }
+    const properties: string[] = Reflect.getOwnMetadata(METADATA_KEYS.PROPERTIES, target) || [];
+    if (!properties.includes(propertyKey)) {
+        properties.push(propertyKey);
+        Reflect.defineMetadata(METADATA_KEYS.PROPERTIES, properties, target);
+    }
 }
 
 export function Cast(type: CastType): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol) {
-    if (typeof propertyKey === 'string') {
-      registerProperty(target, propertyKey);
-      Reflect.defineMetadata(METADATA_KEYS.CAST, type, target, propertyKey);
-    }
-  };
+    return function (target: any, propertyKey: string | symbol) {
+        if (typeof propertyKey === 'string') {
+            registerProperty(target, propertyKey);
+            Reflect.defineMetadata(METADATA_KEYS.CAST, type, target, propertyKey);
+        }
+    };
 }
 
 export function CastObject(classFn: ClassFactory): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol) {
-    if (typeof propertyKey === 'string') {
-      registerProperty(target, propertyKey);
-      Reflect.defineMetadata(METADATA_KEYS.CAST_OBJECT, classFn, target, propertyKey);
-    }
-  };
+    return function (target: any, propertyKey: string | symbol) {
+        if (typeof propertyKey === 'string') {
+            registerProperty(target, propertyKey);
+            Reflect.defineMetadata(METADATA_KEYS.CAST_OBJECT, classFn, target, propertyKey);
+        }
+    };
 }
 
 export function CastArray(classFn: ClassFactory): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol) {
-    if (typeof propertyKey === 'string') {
-      registerProperty(target, propertyKey);
-      Reflect.defineMetadata(METADATA_KEYS.CAST_ARRAY, classFn, target, propertyKey);
-    }
-  };
+    return function (target: any, propertyKey: string | symbol) {
+        if (typeof propertyKey === 'string') {
+            registerProperty(target, propertyKey);
+            Reflect.defineMetadata(METADATA_KEYS.CAST_ARRAY, classFn, target, propertyKey);
+        }
+    };
 }
 
 export function Enrich(callback: EnrichCallback): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol) {
-    if (typeof propertyKey === 'string') {
-      registerProperty(target, propertyKey);
-      Reflect.defineMetadata(METADATA_KEYS.ENRICH, callback, target, propertyKey);
-    }
-  };
+    return function (target: any, propertyKey: string | symbol) {
+        if (typeof propertyKey === 'string') {
+            registerProperty(target, propertyKey);
+            Reflect.defineMetadata(METADATA_KEYS.ENRICH, callback, target, propertyKey);
+        }
+    };
+}
+
+function addValidationRule(target: any, propertyKey: string, rule: ValidationRule) {
+    registerProperty(target, propertyKey);
+    const rules: ValidationRule[] = Reflect.getMetadata(METADATA_KEYS.VALIDATION, target, propertyKey) || [];
+    rules.push(rule);
+    Reflect.defineMetadata(METADATA_KEYS.VALIDATION, rules, target, propertyKey);
+}
+
+export function IsRequired(): PropertyDecorator {
+    return function (target: any, propertyKey: string | symbol) {
+        if (typeof propertyKey === 'string') {
+            addValidationRule(target, propertyKey, { type: 'required' });
+        }
+    };
+}
+
+export function MinLength(length: number): PropertyDecorator {
+    return function (target: any, propertyKey: string | symbol) {
+        if (typeof propertyKey === 'string') {
+            addValidationRule(target, propertyKey, { type: 'min-length', value: length });
+        }
+    };
+}
+
+export function MaxLength(length: number): PropertyDecorator {
+    return function (target: any, propertyKey: string | symbol) {
+        if (typeof propertyKey === 'string') {
+            addValidationRule(target, propertyKey, { type: 'max-length', value: length });
+        }
+    };
+}
+
+export function Min(value: number): PropertyDecorator {
+    return function (target: any, propertyKey: string | symbol) {
+        if (typeof propertyKey === 'string') {
+            addValidationRule(target, propertyKey, { type: 'min', value });
+        }
+    };
+}
+
+export function Max(value: number): PropertyDecorator {
+    return function (target: any, propertyKey: string | symbol) {
+        if (typeof propertyKey === 'string') {
+            addValidationRule(target, propertyKey, { type: 'max', value });
+        }
+    };
 }

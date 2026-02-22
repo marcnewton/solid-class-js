@@ -131,6 +131,14 @@ The core class your models must extend.
 * `@CastArray(() => ClassName)` - Maps an incoming array of objects to an array of specific `solid-class-js` model instances.
 * `@Enrich(callback)` - Computes a property's value dynamically based on the raw incoming data.
 
+### Validation Decorators
+Use these to enforce strict value conditions on defined properties. If the conditions are not met during `assign()`, a structured `ValidationError` exception is thrown.
+* `@IsRequired()` - Throws if the property is missing from the API payload.
+* `@MinLength(length: number)` - Enforces an array or string payload contains at least `length` items/characters.
+* `@MaxLength(length: number)` - Enforces an array or string payload contains a maximum of `length` items/characters.
+* `@Min(value: number)` - Enforces a primitive number is no less than `value`.
+* `@Max(value: number)` - Enforces a primitive number is no greater than `value`.
+
 ---
 
 ## Testing

@@ -1,4 +1,5 @@
-import { METADATA_KEYS, CastType, ClassFactory, EnrichCallback } from './decorators';
+import { METADATA_KEYS, CastType, ClassFactory, EnrichCallback, ValidationRule } from './decorators';
+import { ValidationError } from './errors';
 
 export class BaseModel {
     /**
@@ -79,16 +80,95 @@ export class BaseModel {
 
             // If no decorator matched, we DO NOT assign the property because the spec states:
             // "Unmapped keys will be safely ignored to prevent prototype pollution or data leaks."
-            // BUT wait, if a primitive is decorated, it gets mapped. If it's not decorated?
-            // The instructions say "By defining the expected attributes, data types, and nested relationships in your classes... ignores any unexpected keys"
-            // Wait, let's assume ALL defined properties are discovered through decorators. If a property in the class lacks a decorator, it's not technically registered.
-            // Since all fields use decorators in the spec (e.g., @Cast('number') id!: number), we only process properties with metadata.
-            // In the spec: @Cast, @CastObject, @CastArray, @Enrich. If none exist, we shouldn't map.
-            // Actually, since we loop over `this.getAllProperties()`, we ONLY loop over decorated properties (they were added to PROPERTIES array).
-            // So if a property has a decorator, but somehow doesn't match above, we ignore. This is fine.
         }
 
+        this.validate();
+
         return this;
+    }
+
+    /**
+     * Evaluates properties against decorated structural constraints after data assimilation.
+     */
+    private validate(): void {
+        const properties = this.getAllProperties();
+
+        for (const propertyKey of properties) {
+            // Check the current prototype and parents for validation rules map
+            let rules: ValidationRule[] | undefined;
+            let currentProto = Object.getPrototypeOf(this);
+
+            while (currentProto && currentProto !== Object.prototype) {
+                const protoRules: ValidationRule[] | undefined = Reflect.getOwnMetadata(METADATA_KEYS.VALIDATION, currentProto, propertyKey);
+                if (protoRules) {
+                    rules = protoRules;
+                    break;
+                }
+                currentProto = Object.getPrototypeOf(currentProto);
+            }
+
+            const value = (this as any)[propertyKey];
+
+            if (!rules) {
+                continue;
+            }
+
+            for (const rule of rules) {
+                if (rule.type === 'required' && (value === undefined || value === null || value === '')) {
+                    throw new ValidationError(propertyKey, rule.type, undefined, `Property '${propertyKey}' is required.`);
+                }
+
+                if (value !== undefined && value !== null && value !== '') {
+                    if (rule.type === 'min-length') {
+                        if (typeof value === 'string' || Array.isArray(value)) {
+                            if (value.length < rule.value) {
+                                throw new ValidationError(
+                                    propertyKey,
+                                    rule.type,
+                                    rule.value,
+                                    `Property '${propertyKey}' must be at least ${rule.value} characters/items long.`
+                                );
+                            }
+                        }
+                    }
+
+                    if (rule.type === 'max-length') {
+                        if (typeof value === 'string' || Array.isArray(value)) {
+                            if (value.length > rule.value) {
+                                throw new ValidationError(
+                                    propertyKey,
+                                    rule.type,
+                                    rule.value,
+                                    `Property '${propertyKey}' must not exceed ${rule.value} characters/items.`
+                                );
+                            }
+                        }
+                    }
+
+                    if (rule.type === 'min') {
+                        if (typeof value === 'number' && value < rule.value) {
+                            throw new ValidationError(
+                                propertyKey,
+                                rule.type,
+                                rule.value,
+                                `Property '${propertyKey}' must not be less than ${rule.value}.`
+                            );
+                        }
+                    }
+
+                    if (rule.type === 'max') {
+                        if (typeof value === 'number' && value > rule.value) {
+                            throw new ValidationError(
+                                propertyKey,
+                                rule.type,
+                                rule.value,
+                                `Property '${propertyKey}' must not be greater than ${rule.value}.`
+                            );
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /**
