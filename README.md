@@ -127,17 +127,22 @@ The core class your models must extend.
 
 ### Decorators
 * `@Cast(type: 'string' | 'number' | 'boolean')` - Forces the incoming value into the specified primitive type.
+* `@CastDate()` - Instantiates a native `Date` object from numeric timestamps or valid ISO 8601 strings.
 * `@CastObject(() => ClassName)` - Maps an incoming object to a specific `solid-class-js` model instance.
 * `@CastArray(() => ClassName)` - Maps an incoming array of objects to an array of specific `solid-class-js` model instances.
 * `@Enrich(callback)` - Computes a property's value dynamically based on the raw incoming data.
 
 ### Validation Decorators
-Use these to enforce strict value conditions on defined properties. If the conditions are not met during `assign()`, a structured `ValidationError` exception is thrown.
-* `@IsRequired()` - Throws if the property is missing from the API payload.
+Use these to enforce strict value conditions on defined properties. If any conditions are not met during `assign()`, a structured `ValidationErrorsList` exception is thrown containing an `.errors` array with every failed `ValidationError`.
+* `@Default(value: any)` - Assigns a fallback value before validation executing if the JSON payload is missing the property.
+* `@IsRequired()` - Throws if the property is missing from the API payload (even after Defaults evaluate).
 * `@MinLength(length: number)` - Enforces an array or string payload contains at least `length` items/characters.
 * `@MaxLength(length: number)` - Enforces an array or string payload contains a maximum of `length` items/characters.
 * `@Min(value: number)` - Enforces a primitive number is no less than `value`.
 * `@Max(value: number)` - Enforces a primitive number is no greater than `value`.
+* `@Matches(pattern: RegExp)` - Tests a parsed string against a regular expression.
+* `@IsEmail()` - A strict check assuring the string satisfies a standard format for an Email Address.
+* `@IsUrl()` - A strict check assuring the string resolves securely into a native URL instance.
 
 ---
 

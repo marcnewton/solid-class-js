@@ -1,5 +1,5 @@
 import { METADATA_KEYS, CastType, ClassFactory, EnrichCallback, ValidationRule } from './decorators';
-import { ValidationError } from './errors';
+import { ValidationError, ValidationErrorsList } from './errors';
 
 export class BaseModel {
     /**
@@ -27,7 +27,16 @@ export class BaseModel {
                 continue; // Enriched fields do not go through normal processing
             }
 
-            const rawValue = data[propertyKey];
+            let rawValue = data[propertyKey];
+
+            // Handle @Default fallback if the value doesn't exist
+            if (rawValue === undefined) {
+                const defaultValue = Reflect.getMetadata(METADATA_KEYS.DEFAULT, this, propertyKey);
+                if (defaultValue !== undefined) {
+                    rawValue = defaultValue;
+                }
+            }
+
             if (rawValue === undefined || rawValue === null) {
                 continue;
             }
@@ -36,6 +45,24 @@ export class BaseModel {
             const castType: CastType | undefined = Reflect.getMetadata(METADATA_KEYS.CAST, this, propertyKey);
             if (castType) {
                 (this as any)[propertyKey] = this.castPrimitive(rawValue, castType);
+                continue;
+            }
+
+            // Handle @CastDate
+            const castDate: boolean | undefined = Reflect.getMetadata(METADATA_KEYS.CAST_DATE, this, propertyKey);
+            if (castDate) {
+                if (typeof rawValue === 'string' || typeof rawValue === 'number') {
+                    const parsedDate = new Date(rawValue);
+                    if (!isNaN(parsedDate.getTime())) {
+                        (this as any)[propertyKey] = parsedDate;
+                    } else {
+                        (this as any)[propertyKey] = undefined;
+                    }
+                } else if (rawValue instanceof Date && !isNaN(rawValue.getTime())) {
+                    (this as any)[propertyKey] = rawValue;
+                } else {
+                    (this as any)[propertyKey] = undefined;
+                }
                 continue;
             }
 
@@ -92,6 +119,7 @@ export class BaseModel {
      */
     private validate(): void {
         const properties = this.getAllProperties();
+        const errors: ValidationError[] = [];
 
         for (const propertyKey of properties) {
             // Check the current prototype and parents for validation rules map
@@ -115,19 +143,19 @@ export class BaseModel {
 
             for (const rule of rules) {
                 if (rule.type === 'required' && (value === undefined || value === null || value === '')) {
-                    throw new ValidationError(propertyKey, rule.type, undefined, `Property '${propertyKey}' is required.`);
+                    errors.push(new ValidationError(propertyKey, rule.type, undefined, `Property '${propertyKey}' is required.`));
                 }
 
                 if (value !== undefined && value !== null && value !== '') {
                     if (rule.type === 'min-length') {
                         if (typeof value === 'string' || Array.isArray(value)) {
                             if (value.length < rule.value) {
-                                throw new ValidationError(
+                                errors.push(new ValidationError(
                                     propertyKey,
                                     rule.type,
                                     rule.value,
                                     `Property '${propertyKey}' must be at least ${rule.value} characters/items long.`
-                                );
+                                ));
                             }
                         }
                     }
@@ -135,39 +163,90 @@ export class BaseModel {
                     if (rule.type === 'max-length') {
                         if (typeof value === 'string' || Array.isArray(value)) {
                             if (value.length > rule.value) {
-                                throw new ValidationError(
+                                errors.push(new ValidationError(
                                     propertyKey,
                                     rule.type,
                                     rule.value,
                                     `Property '${propertyKey}' must not exceed ${rule.value} characters/items.`
-                                );
+                                ));
                             }
                         }
                     }
 
                     if (rule.type === 'min') {
                         if (typeof value === 'number' && value < rule.value) {
-                            throw new ValidationError(
+                            errors.push(new ValidationError(
                                 propertyKey,
                                 rule.type,
                                 rule.value,
                                 `Property '${propertyKey}' must not be less than ${rule.value}.`
-                            );
+                            ));
                         }
                     }
 
                     if (rule.type === 'max') {
                         if (typeof value === 'number' && value > rule.value) {
-                            throw new ValidationError(
+                            errors.push(new ValidationError(
                                 propertyKey,
                                 rule.type,
                                 rule.value,
                                 `Property '${propertyKey}' must not be greater than ${rule.value}.`
-                            );
+                            ));
+                        }
+                    }
+
+                    if (rule.type === 'matches') {
+                        if (typeof value === 'string') {
+                            const regex = rule.value as RegExp;
+                            if (!regex.test(value)) {
+                                errors.push(new ValidationError(
+                                    propertyKey,
+                                    rule.type,
+                                    rule.value,
+                                    `Property '${propertyKey}' must match the given pattern.`
+                                ));
+                            }
+                        }
+                    }
+
+                    if (rule.type === 'email') {
+                        if (typeof value === 'string') {
+                            // extremely basic email validation that works for 99% of simple string checking usecases
+                            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                            if (!emailRegex.test(value)) {
+                                errors.push(new ValidationError(
+                                    propertyKey,
+                                    rule.type,
+                                    undefined,
+                                    `Property '${propertyKey}' must be a valid email address.`
+                                ));
+                            }
+                        }
+                    }
+
+                    if (rule.type === 'url') {
+                        if (typeof value === 'string') {
+                            try {
+                                const url = new URL(value);
+                                if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+                                    throw new Error('Invalid URL protocol');
+                                }
+                            } catch {
+                                errors.push(new ValidationError(
+                                    propertyKey,
+                                    rule.type,
+                                    undefined,
+                                    `Property '${propertyKey}' must be a valid URL.`
+                                ));
+                            }
                         }
                     }
                 }
             }
+        }
+
+        if (errors.length > 0) {
+            throw new ValidationErrorsList(errors);
         }
     }
 

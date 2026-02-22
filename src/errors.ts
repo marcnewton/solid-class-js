@@ -11,3 +11,13 @@ export class ValidationError extends Error {
         this.expected = expected;
     }
 }
+
+export class ValidationErrorsList extends Error {
+    public errors: ValidationError[];
+
+    constructor(errors: ValidationError[]) {
+        super(`Validation failed with ${errors.length} errors.`);
+        this.name = 'ValidationErrorsList';
+        this.errors = errors;
+    }
+}

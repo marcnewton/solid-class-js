@@ -7,6 +7,8 @@ export const METADATA_KEYS = {
     ENRICH: Symbol('solid-class:enrich'),
     PROPERTIES: Symbol('solid-class:properties'),
     VALIDATION: Symbol('solid-class:validation'),
+    DEFAULT: Symbol('solid-class:default'),
+    CAST_DATE: Symbol('solid-class:cast-date')
 };
 
 export type CastType = 'string' | 'number' | 'boolean';
@@ -15,7 +17,7 @@ export type ClassFactory = () => ClassConstructor;
 export type EnrichCallback = (data: any) => any;
 
 export interface ValidationRule {
-    type: 'required' | 'min-length' | 'max-length' | 'min' | 'max';
+    type: 'required' | 'min-length' | 'max-length' | 'min' | 'max' | 'matches' | 'email' | 'url';
     value?: any;
 }
 
@@ -106,6 +108,48 @@ export function Max(value: number): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         if (typeof propertyKey === 'string') {
             addValidationRule(target, propertyKey, { type: 'max', value });
+        }
+    };
+}
+
+export function Matches(pattern: RegExp): PropertyDecorator {
+    return function (target: any, propertyKey: string | symbol) {
+        if (typeof propertyKey === 'string') {
+            addValidationRule(target, propertyKey, { type: 'matches', value: pattern });
+        }
+    };
+}
+
+export function IsEmail(): PropertyDecorator {
+    return function (target: any, propertyKey: string | symbol) {
+        if (typeof propertyKey === 'string') {
+            addValidationRule(target, propertyKey, { type: 'email' });
+        }
+    };
+}
+
+export function IsUrl(): PropertyDecorator {
+    return function (target: any, propertyKey: string | symbol) {
+        if (typeof propertyKey === 'string') {
+            addValidationRule(target, propertyKey, { type: 'url' });
+        }
+    };
+}
+
+export function Default(value: any): PropertyDecorator {
+    return function (target: any, propertyKey: string | symbol) {
+        if (typeof propertyKey === 'string') {
+            registerProperty(target, propertyKey);
+            Reflect.defineMetadata(METADATA_KEYS.DEFAULT, value, target, propertyKey);
+        }
+    };
+}
+
+export function CastDate(): PropertyDecorator {
+    return function (target: any, propertyKey: string | symbol) {
+        if (typeof propertyKey === 'string') {
+            registerProperty(target, propertyKey);
+            Reflect.defineMetadata(METADATA_KEYS.CAST_DATE, true, target, propertyKey);
         }
     };
 }
