@@ -132,6 +132,7 @@ The core class your models must extend.
 * `@CastArray(() => ClassName)` - Maps an incoming array of objects to an array of specific `solid-class-js` model instances.
 * `@Enrich(callback)` - Computes a property's value dynamically based on the raw incoming data.
 * `@MapFrom(alias: string)` - Ingests a missing property securely from an alternative API layout sequence (e.g. grabbing `first_name` to map onto `firstName`).
+* `@Exclude(...contexts: string[])` - Hides a specific parameter universally `()` or explicitly from a strictly contextual evaluation sequence `('POST', 'PUT')` during serialization hooks.
 
 ### Validation Decorators
 Use these to enforce strict value conditions on defined properties. If any conditions are not met during `assign()`, a structured `ValidationErrorsList` exception is thrown containing an `.errors` array with every failed `ValidationError`.
@@ -147,6 +148,9 @@ Use these to enforce strict value conditions on defined properties. If any condi
 * `@CustomValidator((value, instance) => boolean | string)` - Escapes structural checking completely, passing the property `value` and parent model `instance` to evaluate explicitly scoped generic business rules.
 
 ---
+
+### `.toJSON(context?: string)`
+By default, standard stringification securely calls `.toJSON()` across objects recursively. You may extract custom `.toJSON('POST')` payloads that securely iterate properties conditionally ignoring specific targets marked via explicitly identical context-mapped `@Exclude()` targets.
 
 ## Testing
 

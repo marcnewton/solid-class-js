@@ -9,7 +9,8 @@ export const METADATA_KEYS = {
     VALIDATION: Symbol('solid-class:validation'),
     DEFAULT: Symbol('solid-class:default'),
     CAST_DATE: Symbol('solid-class:cast-date'),
-    MAP_FROM: Symbol('solid-class:map-from')
+    MAP_FROM: Symbol('solid-class:map-from'),
+    EXCLUDE: Symbol('solid-class:exclude')
 };
 
 export type CastType = 'string' | 'number' | 'boolean';
@@ -169,6 +170,15 @@ export function CustomValidator(callback: CustomValidatorCallback): PropertyDeco
     return function (target: any, propertyKey: string | symbol) {
         if (typeof propertyKey === 'string') {
             addValidationRule(target, propertyKey, { type: 'custom', value: callback });
+        }
+    };
+}
+
+export function Exclude(...contexts: string[]): PropertyDecorator {
+    return function (target: any, propertyKey: string | symbol) {
+        if (typeof propertyKey === 'string') {
+            registerProperty(target, propertyKey);
+            Reflect.defineMetadata(METADATA_KEYS.EXCLUDE, contexts, target, propertyKey);
         }
     };
 }

@@ -117,6 +117,44 @@ export class BaseModel {
     }
 
     /**
+     * Serializes the model strictly into a clean Plain Old Javascript Object mapping mapped values.
+     * Evaluates @Exclude targets stripping them safely conditionally based on executing `context`.
+     */
+    public toJSON(context?: string): Record<string, any> {
+        const payload: Record<string, any> = {};
+        const properties = this.getAllProperties();
+
+        for (const propertyKey of properties) {
+            const excludeContexts: string[] | undefined = Reflect.getMetadata(METADATA_KEYS.EXCLUDE, this, propertyKey);
+
+            if (excludeContexts) {
+                // If the decorator is called bare @Exclude() it drops everywhere seamlessly
+                if (excludeContexts.length === 0) {
+                    continue;
+                }
+
+                // If contexts are provided, evaluate if this environment matches
+                if (context && excludeContexts.includes(context)) {
+                    continue;
+                }
+            }
+
+            let value = (this as any)[propertyKey];
+
+            // If nested structure exists cascade context rules gracefully
+            if (value instanceof BaseModel) {
+                value = value.toJSON(context);
+            } else if (Array.isArray(value)) {
+                value = value.map(item => item instanceof BaseModel ? item.toJSON(context) : item);
+            }
+
+            payload[propertyKey] = value;
+        }
+
+        return payload;
+    }
+
+    /**
      * Evaluates properties against decorated structural constraints after data assimilation.
      */
     private validate(): void {
