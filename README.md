@@ -131,6 +131,7 @@ The core class your models must extend.
 * `@CastObject(() => ClassName)` - Maps an incoming object to a specific `solid-class-js` model instance.
 * `@CastArray(() => ClassName)` - Maps an incoming array of objects to an array of specific `solid-class-js` model instances.
 * `@Enrich(callback)` - Computes a property's value dynamically based on the raw incoming data.
+* `@MapFrom(alias: string)` - Ingests a missing property securely from an alternative API layout sequence (e.g. grabbing `first_name` to map onto `firstName`).
 
 ### Validation Decorators
 Use these to enforce strict value conditions on defined properties. If any conditions are not met during `assign()`, a structured `ValidationErrorsList` exception is thrown containing an `.errors` array with every failed `ValidationError`.

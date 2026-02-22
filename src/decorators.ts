@@ -8,7 +8,8 @@ export const METADATA_KEYS = {
     PROPERTIES: Symbol('solid-class:properties'),
     VALIDATION: Symbol('solid-class:validation'),
     DEFAULT: Symbol('solid-class:default'),
-    CAST_DATE: Symbol('solid-class:cast-date')
+    CAST_DATE: Symbol('solid-class:cast-date'),
+    MAP_FROM: Symbol('solid-class:map-from')
 };
 
 export type CastType = 'string' | 'number' | 'boolean';
@@ -150,6 +151,15 @@ export function CastDate(): PropertyDecorator {
         if (typeof propertyKey === 'string') {
             registerProperty(target, propertyKey);
             Reflect.defineMetadata(METADATA_KEYS.CAST_DATE, true, target, propertyKey);
+        }
+    };
+}
+
+export function MapFrom(alias: string): PropertyDecorator {
+    return function (target: any, propertyKey: string | symbol) {
+        if (typeof propertyKey === 'string') {
+            registerProperty(target, propertyKey);
+            Reflect.defineMetadata(METADATA_KEYS.MAP_FROM, alias, target, propertyKey);
         }
     };
 }

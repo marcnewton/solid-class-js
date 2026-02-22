@@ -27,7 +27,9 @@ export class BaseModel {
                 continue; // Enriched fields do not go through normal processing
             }
 
-            let rawValue = data[propertyKey];
+            // Handle @MapFrom Alias
+            const mapFromAlias: string | undefined = Reflect.getMetadata(METADATA_KEYS.MAP_FROM, this, propertyKey);
+            let rawValue = mapFromAlias && data[mapFromAlias] !== undefined ? data[mapFromAlias] : data[propertyKey];
 
             // Handle @Default fallback if the value doesn't exist
             if (rawValue === undefined) {
