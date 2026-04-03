@@ -35,9 +35,7 @@
     "url": "https://github.com/marcnewton/solid-class-js/issues"
   },
   "homepage": "https://github.com/marcnewton/solid-class-js#readme",
-  "dependencies": {
-    "reflect-metadata": "^0.2.2"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/jest": "^30.0.0",

@@ -1,5 +1,6 @@
 import { METADATA_KEYS, CastType, ClassFactory, EnrichCallback, ValidationRule } from './decorators';
 import { ValidationError, ValidationErrorsList } from './errors';
+import { getMetadata, getOwnMetadata } from './metadata';
 
 export class BaseModel {
     private __baseline?: string;
@@ -18,19 +19,19 @@ export class BaseModel {
 
         for (const propertyKey of properties) {
             // Handle @Enrich by deferring it until after basic properties are assimilated
-            const enrichCallback: EnrichCallback | undefined = Reflect.getMetadata(METADATA_KEYS.ENRICH, this, propertyKey);
+            const enrichCallback: EnrichCallback | undefined = getMetadata(METADATA_KEYS.ENRICH, this, propertyKey);
             if (enrichCallback) {
                 enrichedProperties.push(propertyKey);
                 continue; // Enriched fields do not go through normal processing
             }
 
             // Handle @MapFrom Alias
-            const mapFromAlias: string | undefined = Reflect.getMetadata(METADATA_KEYS.MAP_FROM, this, propertyKey);
+            const mapFromAlias: string | undefined = getMetadata(METADATA_KEYS.MAP_FROM, this, propertyKey);
             let rawValue = mapFromAlias && data[mapFromAlias] !== undefined ? data[mapFromAlias] : data[propertyKey];
 
             // Handle @Default fallback if the value doesn't exist
             if (rawValue === undefined) {
-                const defaultValue = Reflect.getMetadata(METADATA_KEYS.DEFAULT, this, propertyKey);
+                const defaultValue = getMetadata(METADATA_KEYS.DEFAULT, this, propertyKey);
                 if (defaultValue !== undefined) {
                     rawValue = defaultValue;
                 }
@@ -41,14 +42,14 @@ export class BaseModel {
             }
 
             // Handle @Cast
-            const castType: CastType | undefined = Reflect.getMetadata(METADATA_KEYS.CAST, this, propertyKey);
+            const castType: CastType | undefined = getMetadata(METADATA_KEYS.CAST, this, propertyKey);
             if (castType) {
                 (this as any)[propertyKey] = this.castPrimitive(rawValue, castType);
                 continue;
             }
 
             // Handle @CastDate
-            const castDate: boolean | undefined = Reflect.getMetadata(METADATA_KEYS.CAST_DATE, this, propertyKey);
+            const castDate: boolean | undefined = getMetadata(METADATA_KEYS.CAST_DATE, this, propertyKey);
             if (castDate) {
                 if (typeof rawValue === 'string' || typeof rawValue === 'number') {
                     const parsedDate = new Date(rawValue);
@@ -66,7 +67,7 @@ export class BaseModel {
             }
 
             // Handle @CastObject
-            const castObjectFn: ClassFactory | undefined = Reflect.getMetadata(METADATA_KEYS.CAST_OBJECT, this, propertyKey);
+            const castObjectFn: ClassFactory | undefined = getMetadata(METADATA_KEYS.CAST_OBJECT, this, propertyKey);
             if (castObjectFn) {
                 // Must be an object, not null, and not an Array
                 if (typeof rawValue === 'object' && rawValue !== null && !Array.isArray(rawValue)) {
@@ -83,7 +84,7 @@ export class BaseModel {
             }
 
             // Handle @CastArray
-            const castArrayFn: ClassFactory | undefined = Reflect.getMetadata(METADATA_KEYS.CAST_ARRAY, this, propertyKey);
+            const castArrayFn: ClassFactory | undefined = getMetadata(METADATA_KEYS.CAST_ARRAY, this, propertyKey);
             if (castArrayFn) {
                 // Must be an actual Array
                 if (Array.isArray(rawValue)) {
@@ -110,7 +111,7 @@ export class BaseModel {
 
         // Post-process @Enrich hooks providing access to the newly mutated instance state merged with raw payload
         for (const propertyKey of enrichedProperties) {
-            const enrichCallback: EnrichCallback | undefined = Reflect.getMetadata(METADATA_KEYS.ENRICH, this, propertyKey);
+            const enrichCallback: EnrichCallback | undefined = getMetadata(METADATA_KEYS.ENRICH, this, propertyKey);
             if (enrichCallback) {
                 try {
                     // Merged scope ensures patch payloads like `.assign({ age: 25 })` preserve existing `this.firstName` states
@@ -199,7 +200,7 @@ export class BaseModel {
 
         for (const propertyKey of properties) {
             if (!ignoreExclusions) {
-                const excludeContexts: string[] | undefined = Reflect.getMetadata(METADATA_KEYS.EXCLUDE, this, propertyKey);
+                const excludeContexts: string[] | undefined = getMetadata(METADATA_KEYS.EXCLUDE, this, propertyKey);
 
                 if (excludeContexts) {
                     // If the decorator is called bare @Exclude() it drops everywhere seamlessly
@@ -242,7 +243,7 @@ export class BaseModel {
             let currentProto = Object.getPrototypeOf(this);
 
             while (currentProto && currentProto !== Object.prototype) {
-                const protoRules: ValidationRule[] | undefined = Reflect.getOwnMetadata(METADATA_KEYS.VALIDATION, currentProto, propertyKey);
+                const protoRules: ValidationRule[] | undefined = getOwnMetadata(METADATA_KEYS.VALIDATION, currentProto, propertyKey);
                 if (protoRules) {
                     rules = protoRules;
                     break;
@@ -392,7 +393,7 @@ export class BaseModel {
         let currentProto = Object.getPrototypeOf(this);
 
         while (currentProto && currentProto !== Object.prototype) {
-            const protoProps: string[] = Reflect.getOwnMetadata(METADATA_KEYS.PROPERTIES, currentProto) || [];
+            const protoProps: string[] = getOwnMetadata(METADATA_KEYS.PROPERTIES, currentProto) || [];
             protoProps.forEach((prop) => properties.add(prop));
             currentProto = Object.getPrototypeOf(currentProto);
         }

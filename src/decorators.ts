@@ -1,4 +1,4 @@
-import 'reflect-metadata';
+import { defineMetadata, getMetadata, getOwnMetadata } from './metadata';
 
 export const METADATA_KEYS = {
     CAST: Symbol('solid-class:cast'),
@@ -25,10 +25,10 @@ export interface ValidationRule {
 }
 
 function registerProperty(target: any, propertyKey: string) {
-    const properties: string[] = Reflect.getOwnMetadata(METADATA_KEYS.PROPERTIES, target) || [];
+    const properties: string[] = getOwnMetadata(METADATA_KEYS.PROPERTIES, target) || [];
     if (!properties.includes(propertyKey)) {
         properties.push(propertyKey);
-        Reflect.defineMetadata(METADATA_KEYS.PROPERTIES, properties, target);
+        defineMetadata(METADATA_KEYS.PROPERTIES, properties, target);
     }
 }
 
@@ -36,7 +36,7 @@ export function Cast(type: CastType): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         if (typeof propertyKey === 'string') {
             registerProperty(target, propertyKey);
-            Reflect.defineMetadata(METADATA_KEYS.CAST, type, target, propertyKey);
+            defineMetadata(METADATA_KEYS.CAST, type, target, propertyKey);
         }
     };
 }
@@ -45,7 +45,7 @@ export function CastObject(classFn: ClassFactory): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         if (typeof propertyKey === 'string') {
             registerProperty(target, propertyKey);
-            Reflect.defineMetadata(METADATA_KEYS.CAST_OBJECT, classFn, target, propertyKey);
+            defineMetadata(METADATA_KEYS.CAST_OBJECT, classFn, target, propertyKey);
         }
     };
 }
@@ -54,7 +54,7 @@ export function CastArray(classFn: ClassFactory): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         if (typeof propertyKey === 'string') {
             registerProperty(target, propertyKey);
-            Reflect.defineMetadata(METADATA_KEYS.CAST_ARRAY, classFn, target, propertyKey);
+            defineMetadata(METADATA_KEYS.CAST_ARRAY, classFn, target, propertyKey);
         }
     };
 }
@@ -63,16 +63,16 @@ export function Enrich(callback: EnrichCallback): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         if (typeof propertyKey === 'string') {
             registerProperty(target, propertyKey);
-            Reflect.defineMetadata(METADATA_KEYS.ENRICH, callback, target, propertyKey);
+            defineMetadata(METADATA_KEYS.ENRICH, callback, target, propertyKey);
         }
     };
 }
 
 function addValidationRule(target: any, propertyKey: string, rule: ValidationRule) {
     registerProperty(target, propertyKey);
-    const rules: ValidationRule[] = Reflect.getMetadata(METADATA_KEYS.VALIDATION, target, propertyKey) || [];
+    const rules: ValidationRule[] = getMetadata(METADATA_KEYS.VALIDATION, target, propertyKey) || [];
     rules.push(rule);
-    Reflect.defineMetadata(METADATA_KEYS.VALIDATION, rules, target, propertyKey);
+    defineMetadata(METADATA_KEYS.VALIDATION, rules, target, propertyKey);
 }
 
 export function IsRequired(): PropertyDecorator {
@@ -143,7 +143,7 @@ export function Default(value: any): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         if (typeof propertyKey === 'string') {
             registerProperty(target, propertyKey);
-            Reflect.defineMetadata(METADATA_KEYS.DEFAULT, value, target, propertyKey);
+            defineMetadata(METADATA_KEYS.DEFAULT, value, target, propertyKey);
         }
     };
 }
@@ -152,7 +152,7 @@ export function CastDate(): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         if (typeof propertyKey === 'string') {
             registerProperty(target, propertyKey);
-            Reflect.defineMetadata(METADATA_KEYS.CAST_DATE, true, target, propertyKey);
+            defineMetadata(METADATA_KEYS.CAST_DATE, true, target, propertyKey);
         }
     };
 }
@@ -161,7 +161,7 @@ export function MapFrom(alias: string): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         if (typeof propertyKey === 'string') {
             registerProperty(target, propertyKey);
-            Reflect.defineMetadata(METADATA_KEYS.MAP_FROM, alias, target, propertyKey);
+            defineMetadata(METADATA_KEYS.MAP_FROM, alias, target, propertyKey);
         }
     };
 }
@@ -178,7 +178,7 @@ export function Exclude(...contexts: string[]): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         if (typeof propertyKey === 'string') {
             registerProperty(target, propertyKey);
-            Reflect.defineMetadata(METADATA_KEYS.EXCLUDE, contexts, target, propertyKey);
+            defineMetadata(METADATA_KEYS.EXCLUDE, contexts, target, propertyKey);
         }
     };
 }
