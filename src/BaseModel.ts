@@ -1,4 +1,4 @@
-import { METADATA_KEYS, CastType, ClassFactory, EnrichCallback, ValidationRule } from './decorators';
+import { METADATA_KEYS, CastType, ClassFactory, EnrichCallback, ValidatorFunction } from './decorators';
 import { ValidationError, ValidationErrorsList } from './errors';
 import { getMetadata, getOwnMetadata } from './metadata';
 
@@ -239,11 +239,11 @@ export class BaseModel {
 
         for (const propertyKey of properties) {
             // Check the current prototype and parents for validation rules map
-            let rules: ValidationRule[] | undefined;
+            let rules: ValidatorFunction[] | undefined;
             let currentProto = Object.getPrototypeOf(this);
 
             while (currentProto && currentProto !== Object.prototype) {
-                const protoRules: ValidationRule[] | undefined = getOwnMetadata(METADATA_KEYS.VALIDATION, currentProto, propertyKey);
+                const protoRules: ValidatorFunction[] | undefined = getOwnMetadata(METADATA_KEYS.VALIDATION, currentProto, propertyKey);
                 if (protoRules) {
                     rules = protoRules;
                     break;
@@ -257,125 +257,10 @@ export class BaseModel {
                 continue;
             }
 
-            for (const rule of rules) {
-                if (rule.type === 'required' && (value === undefined || value === null || value === '')) {
-                    errors.push(new ValidationError(propertyKey, rule.type, undefined, `Property '${propertyKey}' is required.`));
-                }
-
-                if (value !== undefined && value !== null && value !== '') {
-                    if (rule.type === 'min-length') {
-                        if (typeof value === 'string' || Array.isArray(value)) {
-                            if (value.length < rule.value) {
-                                errors.push(new ValidationError(
-                                    propertyKey,
-                                    rule.type,
-                                    rule.value,
-                                    `Property '${propertyKey}' must be at least ${rule.value} characters/items long.`
-                                ));
-                            }
-                        }
-                    }
-
-                    if (rule.type === 'max-length') {
-                        if (typeof value === 'string' || Array.isArray(value)) {
-                            if (value.length > rule.value) {
-                                errors.push(new ValidationError(
-                                    propertyKey,
-                                    rule.type,
-                                    rule.value,
-                                    `Property '${propertyKey}' must not exceed ${rule.value} characters/items.`
-                                ));
-                            }
-                        }
-                    }
-
-                    if (rule.type === 'min') {
-                        if (typeof value === 'number' && value < rule.value) {
-                            errors.push(new ValidationError(
-                                propertyKey,
-                                rule.type,
-                                rule.value,
-                                `Property '${propertyKey}' must not be less than ${rule.value}.`
-                            ));
-                        }
-                    }
-
-                    if (rule.type === 'max') {
-                        if (typeof value === 'number' && value > rule.value) {
-                            errors.push(new ValidationError(
-                                propertyKey,
-                                rule.type,
-                                rule.value,
-                                `Property '${propertyKey}' must not be greater than ${rule.value}.`
-                            ));
-                        }
-                    }
-
-                    if (rule.type === 'matches') {
-                        if (typeof value === 'string') {
-                            const regex = rule.value as RegExp;
-                            if (!regex.test(value)) {
-                                errors.push(new ValidationError(
-                                    propertyKey,
-                                    rule.type,
-                                    rule.value,
-                                    `Property '${propertyKey}' must match the given pattern.`
-                                ));
-                            }
-                        }
-                    }
-
-                    if (rule.type === 'email') {
-                        if (typeof value === 'string') {
-                            // extremely basic email validation that works for 99% of simple string checking usecases
-                            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                            if (!emailRegex.test(value)) {
-                                errors.push(new ValidationError(
-                                    propertyKey,
-                                    rule.type,
-                                    undefined,
-                                    `Property '${propertyKey}' must be a valid email address.`
-                                ));
-                            }
-                        }
-                    }
-
-                    if (rule.type === 'url') {
-                        if (typeof value === 'string') {
-                            try {
-                                const url = new URL(value);
-                                if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-                                    throw new Error('Invalid URL protocol');
-                                }
-                            } catch {
-                                errors.push(new ValidationError(
-                                    propertyKey,
-                                    rule.type,
-                                    undefined,
-                                    `Property '${propertyKey}' must be a valid URL.`
-                                ));
-                            }
-                        }
-                    }
-
-                    if (rule.type === 'custom') {
-                        const isValidOrError = rule.value(value, this);
-                        if (isValidOrError === false) {
-                            errors.push(new ValidationError(
-                                propertyKey,
-                                rule.type,
-                                undefined,
-                                `Property '${propertyKey}' failed custom validation.`
-                            ));
-                        } else if (typeof isValidOrError === 'string') {
-                            errors.push(new ValidationError(
-                                propertyKey,
-                                rule.type,
-                                undefined,
-                                isValidOrError
-                            ));
-                        }
-                    }
+            for (const validateFn of rules) {
+                const error = validateFn(value, this, propertyKey);
+                if (error) {
+                    errors.push(error);
                 }
             }
         }

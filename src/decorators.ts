@@ -1,4 +1,5 @@
 import { defineMetadata, getMetadata, getOwnMetadata } from './metadata';
+import { ValidationError } from './errors';
 
 export const METADATA_KEYS = {
     CAST: Symbol('solid-class:cast'),
@@ -18,11 +19,10 @@ export type ClassConstructor<T = any> = new (...args: any[]) => T;
 export type ClassFactory = () => ClassConstructor;
 export type EnrichCallback = (data: any) => any;
 export type CustomValidatorCallback = (value: any, instance: any) => boolean | string;
+export type ValidatorFunction = (value: any, instance: any, propertyKey: string) => ValidationError | null;
 
-export interface ValidationRule {
-    type: 'required' | 'min-length' | 'max-length' | 'min' | 'max' | 'matches' | 'email' | 'url' | 'custom';
-    value?: any;
-}
+// Keep ValidationRule as an alias to ValidatorFunction for backwards compatibility if exported externally
+export type ValidationRule = ValidatorFunction;
 
 function registerProperty(target: any, propertyKey: string) {
     const properties: string[] = getOwnMetadata(METADATA_KEYS.PROPERTIES, target) || [];
@@ -68,9 +68,9 @@ export function Enrich(callback: EnrichCallback): PropertyDecorator {
     };
 }
 
-function addValidationRule(target: any, propertyKey: string, rule: ValidationRule) {
+function addValidationRule(target: any, propertyKey: string, rule: ValidatorFunction) {
     registerProperty(target, propertyKey);
-    const rules: ValidationRule[] = getMetadata(METADATA_KEYS.VALIDATION, target, propertyKey) || [];
+    const rules: ValidatorFunction[] = getMetadata(METADATA_KEYS.VALIDATION, target, propertyKey) || [];
     rules.push(rule);
     defineMetadata(METADATA_KEYS.VALIDATION, rules, target, propertyKey);
 }
@@ -78,7 +78,12 @@ function addValidationRule(target: any, propertyKey: string, rule: ValidationRul
 export function IsRequired(): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         if (typeof propertyKey === 'string') {
-            addValidationRule(target, propertyKey, { type: 'required' });
+            addValidationRule(target, propertyKey, (value: any, instance: any, prop: string) => {
+                if (value === undefined || value === null || value === '') {
+                    return new ValidationError(prop, 'required', undefined, `Property '${prop}' is required.`);
+                }
+                return null;
+            });
         }
     };
 }
@@ -86,7 +91,16 @@ export function IsRequired(): PropertyDecorator {
 export function MinLength(length: number): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         if (typeof propertyKey === 'string') {
-            addValidationRule(target, propertyKey, { type: 'min-length', value: length });
+            addValidationRule(target, propertyKey, (value: any, instance: any, prop: string) => {
+                if (value !== undefined && value !== null && value !== '') {
+                    if (typeof value === 'string' || Array.isArray(value)) {
+                        if (value.length < length) {
+                            return new ValidationError(prop, 'min-length', length, `Property '${prop}' must be at least ${length} characters/items long.`);
+                        }
+                    }
+                }
+                return null;
+            });
         }
     };
 }
@@ -94,23 +108,46 @@ export function MinLength(length: number): PropertyDecorator {
 export function MaxLength(length: number): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         if (typeof propertyKey === 'string') {
-            addValidationRule(target, propertyKey, { type: 'max-length', value: length });
+            addValidationRule(target, propertyKey, (value: any, instance: any, prop: string) => {
+                if (value !== undefined && value !== null && value !== '') {
+                    if (typeof value === 'string' || Array.isArray(value)) {
+                        if (value.length > length) {
+                            return new ValidationError(prop, 'max-length', length, `Property '${prop}' must not exceed ${length} characters/items.`);
+                        }
+                    }
+                }
+                return null;
+            });
         }
     };
 }
 
-export function Min(value: number): PropertyDecorator {
+export function Min(minVal: number): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         if (typeof propertyKey === 'string') {
-            addValidationRule(target, propertyKey, { type: 'min', value });
+            addValidationRule(target, propertyKey, (value: any, instance: any, prop: string) => {
+                if (value !== undefined && value !== null && value !== '') {
+                    if (typeof value === 'number' && value < minVal) {
+                        return new ValidationError(prop, 'min', minVal, `Property '${prop}' must not be less than ${minVal}.`);
+                    }
+                }
+                return null;
+            });
         }
     };
 }
 
-export function Max(value: number): PropertyDecorator {
+export function Max(maxVal: number): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         if (typeof propertyKey === 'string') {
-            addValidationRule(target, propertyKey, { type: 'max', value });
+            addValidationRule(target, propertyKey, (value: any, instance: any, prop: string) => {
+                if (value !== undefined && value !== null && value !== '') {
+                    if (typeof value === 'number' && value > maxVal) {
+                        return new ValidationError(prop, 'max', maxVal, `Property '${prop}' must not be greater than ${maxVal}.`);
+                    }
+                }
+                return null;
+            });
         }
     };
 }
@@ -118,7 +155,16 @@ export function Max(value: number): PropertyDecorator {
 export function Matches(pattern: RegExp): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         if (typeof propertyKey === 'string') {
-            addValidationRule(target, propertyKey, { type: 'matches', value: pattern });
+            addValidationRule(target, propertyKey, (value: any, instance: any, prop: string) => {
+                if (value !== undefined && value !== null && value !== '') {
+                    if (typeof value === 'string') {
+                        if (!pattern.test(value)) {
+                            return new ValidationError(prop, 'matches', pattern, `Property '${prop}' must match the given pattern.`);
+                        }
+                    }
+                }
+                return null;
+            });
         }
     };
 }
@@ -126,7 +172,17 @@ export function Matches(pattern: RegExp): PropertyDecorator {
 export function IsEmail(): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         if (typeof propertyKey === 'string') {
-            addValidationRule(target, propertyKey, { type: 'email' });
+            addValidationRule(target, propertyKey, (value: any, instance: any, prop: string) => {
+                if (value !== undefined && value !== null && value !== '') {
+                    if (typeof value === 'string') {
+                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                        if (!emailRegex.test(value)) {
+                            return new ValidationError(prop, 'email', undefined, `Property '${prop}' must be a valid email address.`);
+                        }
+                    }
+                }
+                return null;
+            });
         }
     };
 }
@@ -134,7 +190,21 @@ export function IsEmail(): PropertyDecorator {
 export function IsUrl(): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         if (typeof propertyKey === 'string') {
-            addValidationRule(target, propertyKey, { type: 'url' });
+            addValidationRule(target, propertyKey, (value: any, instance: any, prop: string) => {
+                if (value !== undefined && value !== null && value !== '') {
+                    if (typeof value === 'string') {
+                        try {
+                            const url = new URL(value);
+                            if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+                                throw new Error('Invalid URL protocol');
+                            }
+                        } catch {
+                            return new ValidationError(prop, 'url', undefined, `Property '${prop}' must be a valid URL.`);
+                        }
+                    }
+                }
+                return null;
+            });
         }
     };
 }
@@ -169,7 +239,17 @@ export function MapFrom(alias: string): PropertyDecorator {
 export function CustomValidator(callback: CustomValidatorCallback): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         if (typeof propertyKey === 'string') {
-            addValidationRule(target, propertyKey, { type: 'custom', value: callback });
+            addValidationRule(target, propertyKey, (value: any, instance: any, prop: string) => {
+                if (value !== undefined && value !== null && value !== '') {
+                    const isValidOrError = callback(value, instance);
+                    if (isValidOrError === false) {
+                        return new ValidationError(prop, 'custom', undefined, `Property '${prop}' failed custom validation.`);
+                    } else if (typeof isValidOrError === 'string') {
+                        return new ValidationError(prop, 'custom', undefined, isValidOrError);
+                    }
+                }
+                return null;
+            });
         }
     };
 }
