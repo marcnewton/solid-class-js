@@ -19,19 +19,19 @@
 Use your preferred package manager to install `solid-class-js`.
 
 ```bash
-npm install @marc-newton/solid-class
+npm install @marc-newton/solid-class-js
 ```
 
 ```bash
-pnpm add @marc-newton/solid-class
+pnpm add @marc-newton/solid-class-js
 ```
 
 ```bash
-yarn add @marc-newton/solid-class
+yarn add @marc-newton/solid-class-js
 ```
 
 ```bash
-bun add @marc-newton/solid-class
+bun add @marc-newton/solid-class-js
 ```
 
 > **Note:** Because `solid-class-js` relies on TypeScript decorators, you must enable `experimentalDecorators` and `emitDecoratorMetadata` in your `tsconfig.json`.
