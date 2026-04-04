@@ -168,8 +168,9 @@ export class BaseModel {
     /**
      * Rolls the internal instance data fully backward to the last explicitly `commit()`ted baseline.
      * If `commit()` was never called, it zeros out properties to their baseline initial definitions natively.
+     * Optionally accepts an override object to set a new custom default state baseline.
      */
-    public reset(): void {
+    public reset(override?: Partial<this> | any): void {
         const properties = this.getAllProperties();
 
         // Zero-out existing state to drop patch data before hydrating rollback
@@ -177,7 +178,10 @@ export class BaseModel {
             (this as any)[propertyKey] = undefined;
         }
 
-        if (this.__baseline) {
+        if (override) {
+            this.assign(override, false);
+            this.commit();
+        } else if (this.__baseline) {
             // Re-assign explicitly without throwing nested validation constraint errors
             this.assign(JSON.parse(this.__baseline), false);
         }

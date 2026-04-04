@@ -125,7 +125,7 @@ console.log(user.addresses[0] instanceof Address);
 The core class your models must extend.
 * `assign(data: Partial<this>): this` - Parses the incoming object, applying validation, casting, and decorator logic based on the class definition. Returns the mutated class instance for chaining.
 * `commit(): void` - Snapshots the current instance state implicitly natively creating a baseline to revert back to safely. Useful for capturing exactly what a fresh API GET resolves as or solidifying the state explicitly following a database POST.
-* `reset(): void` - Drops all current patch modifications natively running through `.assign()` forcefully rolling the data state natively backward safely to the last explicitly `commit()`ted snapshot!
+* `reset(override?: Partial<this> | any): void` - Drops all current patch modifications natively running through `.assign()` forcefully rolling the data state natively backward safely to the last explicitly `commit()`ted snapshot! Optionally accepts an `override` object to establish a new custom default baseline state.
 
 ### Decorators
 * `@Cast(type: 'string' | 'number' | 'boolean')` - Forces the incoming value into the specified primitive type.

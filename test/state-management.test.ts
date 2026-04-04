@@ -65,4 +65,30 @@ describe('State Management (commit & reset)', () => {
         expect(user.passwordHash).toBeUndefined();
         expect(user.settings).toBeUndefined();
     });
+
+    it('should allow custom reset overrides that update the baseline', () => {
+        const user = new UserProfile().assign({
+            username: 'alice',
+            passwordHash: 'secret123'
+        });
+
+        user.commit();
+
+        user.reset({
+            username: 'dave',
+            passwordHash: 'newsecret'
+        });
+
+        // The state should now be dave
+        expect(user.username).toBe('dave');
+        expect(user.passwordHash).toBe('newsecret');
+
+        // And the new baseline should be dave
+        user.assign({ username: 'eve' });
+        expect(user.username).toBe('eve');
+
+        user.reset();
+        expect(user.username).toBe('dave');
+        expect(user.passwordHash).toBe('newsecret');
+    });
 });
